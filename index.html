@@ -25,7 +25,6 @@
 
 <div class="flex min-h-screen">
 
-  <!-- ================= SIDEBAR ================= -->
   <aside class="w-64 shrink-0 bg-[#E3B341] flex flex-col">
     <div class="px-5 py-5 border-b border-[#14244A]/10">
       <div class="text-sm font-bold tracking-wide uppercase text-[#14244A]">Talent Planning</div>
@@ -50,10 +49,8 @@
     </div>
   </aside>
 
-  <!-- ================= MAIN ================= -->
   <div class="flex-1 flex flex-col min-w-0">
 
-    <!-- HEADER -->
     <header class="bg-white border-b border-slate-200 px-8 py-5 flex items-center justify-between">
       <div class="flex items-center gap-3">
         <div id="header-avatar" class="w-10 h-10 rounded-full flex items-center justify-center font-semibold text-sm"></div>
@@ -65,15 +62,12 @@
       <button onclick="window.print()" class="px-4 py-2 text-xs font-semibold bg-[#E72175] text-white rounded-lg hover:opacity-90">Export Session</button>
     </header>
 
-    <!-- STEP TABS -->
     <div class="bg-white border-b border-slate-200 px-8">
       <div class="flex gap-1" id="step-tabs"></div>
     </div>
 
-    <!-- STEP CONTENT -->
     <main class="flex-1 overflow-y-auto px-8 py-6" id="step-content"></main>
 
-    <!-- SUMMARY DRAWER -->
     <footer class="bg-white border-t border-slate-200 px-8 py-4">
       <div class="flex items-center justify-between cursor-pointer" onclick="toggleDrawer()">
         <h2 class="text-sm font-bold text-[#14244A]">Live Summary — <span id="summary-leader-name"></span></h2>
@@ -103,9 +97,6 @@
 <script>
 document.getElementById('cycle-date').textContent = new Date().toLocaleDateString('en-US', {year:'numeric', month:'long', day:'numeric'});
 
-// ============================================================
-// BRAND COLORS (Cognitiv)
-// ============================================================
 const BRAND = {
   pink:     { hex:'#E72175', text:'text-white' },
   blue:     { hex:'#015BD7', text:'text-white' },
@@ -118,14 +109,8 @@ const leaderColorOrder = ['pink','yellow','teal','midnight','blue'];
 const leverColor = { Buy:'yellow', Build:'pink', Borrow:'teal', Bound:'blue', Bind:'midnight', Bounce:'slate' };
 const hcColor = { baseline:'pink', wishlist:'teal', radar:'yellow' };
 
-function solidClass(key){ return `bg-[${BRAND[key].hex}] ${BRAND[key].text}`; }
-function tintBg(key, pct){ return `bg-[${BRAND[key].hex}]/${pct}`; }
-function tintBorder(key, pct){ return `border-[${BRAND[key].hex}]/${pct}`; }
 function dot(key){ return `<span class="inline-block w-2 h-2 rounded-full mr-1.5 align-middle" style="background:${BRAND[key].hex}"></span>`; }
 
-// ============================================================
-// STATE
-// ============================================================
 let currentStep = 1;
 let currentLeaderId = 'eng';
 let selectedEmployeeId = null;
@@ -243,9 +228,6 @@ const state = {
 
 function leader() { return state.leaders[currentLeaderId]; }
 
-// ============================================================
-// SIDEBAR / LEADER NAV
-// ============================================================
 function initials(name){ return name.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase(); }
 
 function renderLeaderNav(){
@@ -257,7 +239,7 @@ function renderLeaderNav(){
     const btn = document.createElement('button');
     btn.className = `w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-left border-l-2 ${active ? 'bg-white/70 border-[#14244A]' : 'border-transparent hover:bg-white/40'}`;
     btn.innerHTML = `
-      <span class="w-8 h-8 shrink-0 rounded-full ring-2 ring-white ${solidClass(l.color)} flex items-center justify-center text-xs font-bold">${initials(l.name)}</span>
+      <span class="w-8 h-8 shrink-0 rounded-full ring-2 ring-white flex items-center justify-center text-xs font-bold ${BRAND[l.color].text}" style="background-color:${BRAND[l.color].hex}">${initials(l.name)}</span>
       <span class="min-w-0">
         <span class="block text-sm font-semibold text-[#14244A] truncate">${l.name}</span>
         <span class="block text-xs text-[#14244A]/60 truncate">${l.title}</span>
@@ -300,9 +282,6 @@ function selectLeader(id){
   renderAll();
 }
 
-// ============================================================
-// HEADER + STEP TABS
-// ============================================================
 const stepDefs = [
   {n:1, label:'Business Context & 6-Mo OKRs'},
   {n:2, label:'Team Health & 9-Box'},
@@ -312,8 +291,10 @@ const stepDefs = [
 
 function renderHeader(){
   const l = leader();
-  document.getElementById('header-avatar').className = `w-10 h-10 rounded-full flex items-center justify-center font-semibold text-sm ${solidClass(l.color)}`;
-  document.getElementById('header-avatar').textContent = initials(l.name);
+  const avatar = document.getElementById('header-avatar');
+  avatar.className = `w-10 h-10 rounded-full flex items-center justify-center font-semibold text-sm ${BRAND[l.color].text}`;
+  avatar.style.backgroundColor = BRAND[l.color].hex;
+  avatar.textContent = initials(l.name);
   document.getElementById('header-name').textContent = l.name;
   document.getElementById('header-title').textContent = l.title + ' · Headcount Planning Session';
   document.getElementById('summary-leader-name').textContent = l.name;
@@ -329,9 +310,6 @@ function renderStepTabs(){
 
 function goStep(n){ currentStep = n; renderStepTabs(); renderStepContent(); }
 
-// ============================================================
-// STEP DISPATCH
-// ============================================================
 function renderStepContent(){
   const main = document.getElementById('step-content');
   main.className = 'flex-1 overflow-y-auto px-8 py-6 step-panel';
@@ -343,13 +321,10 @@ function renderStepContent(){
   if(currentStep===2) wireStep2();
 }
 
-// ============================================================
-// STEP 1 — BUSINESS CONTEXT & OKRs
-// ============================================================
 function tplStep1(){
   const l = leader();
   const okrCard = (title, list, kind, colorKey) => `
-    <div class="${tintBg(colorKey,10)} border ${tintBorder(colorKey,35)} rounded-2xl p-5">
+    <div class="border rounded-2xl p-5" style="background-color: ${BRAND[colorKey].hex}15; border-color: ${BRAND[colorKey].hex}50">
       <div class="flex items-center justify-between mb-3">
         <h3 class="text-sm font-bold text-[#14244A] flex items-center">${dot(colorKey)}${title}</h3>
       </div>
@@ -384,7 +359,7 @@ function tplStep1(){
     <div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
       ${okrCard('Company OKRs — Current Half', l.companyOKRs, 'companyOKRs', 'blue')}
       ${okrCard('Team OKRs — Current Half', l.teamOKRs, 'teamOKRs', 'teal')}
-      <div class="${tintBg('pink',10)} border ${tintBorder('pink',35)} rounded-2xl p-5 space-y-4">
+      <div class="border rounded-2xl p-5 space-y-4" style="background-color: ${BRAND.pink.hex}15; border-color: ${BRAND.pink.hex}50">
         <h3 class="text-sm font-bold text-[#14244A] flex items-center">${dot('pink')}Strategic Direction — Next 6 Months</h3>
         <div>
           <label class="text-xs font-medium text-slate-500 uppercase tracking-wide">Where is the business going over the next 6 months?</label>
@@ -412,7 +387,7 @@ function renderSkillTagsInline(){
   if(!wrap) return;
   const l = leader();
   wrap.innerHTML = l.skillTags.map((t,i) => `
-    <span class="px-2.5 py-1 rounded-full ${tintBg(l.color,15)} text-[#14244A] text-xs font-medium flex items-center gap-1.5">
+    <span class="px-2.5 py-1 rounded-full text-[#14244A] text-xs font-medium flex items-center gap-1.5" style="background-color: ${BRAND[l.color].hex}25">
       ${dot(l.color)}${t}<button onclick="removeSkillTag(${i})" class="text-slate-400 hover:text-[#E72175]">✕</button>
     </span>`).join('') || `<p class="text-xs text-slate-400 italic">No tags yet.</p>`;
 }
@@ -441,9 +416,6 @@ function addSkillTag(){
 }
 function removeSkillTag(i){ leader().skillTags.splice(i,1); renderSkillTagsInline(); }
 
-// ============================================================
-// STEP 2 — 9-BOX + SPOF
-// ============================================================
 const boxLabel = {
   '1,3':'Rough Diamond', '2,3':'Future Star', '3,3':'Star',
   '1,2':'Inconsistent Player', '2,2':'Core Player', '3,2':'High Performer',
@@ -484,7 +456,7 @@ function tplStep2(){
 
   return `
     <div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
-      <div class="xl:col-span-2 ${tintBg('blue',8)} border ${tintBorder('blue',35)} rounded-2xl p-5">
+      <div class="xl:col-span-2 border rounded-2xl p-5" style="background-color: ${BRAND.blue.hex}10; border-color: ${BRAND.blue.hex}40">
         <div class="flex items-center justify-between mb-4">
           <h3 class="text-sm font-bold text-[#14244A] flex items-center">${dot('blue')}9-Box Grid</h3>
           <span class="text-xs text-slate-400">Drag a person between boxes to recalibrate</span>
@@ -517,7 +489,7 @@ function tplStep2(){
       </div>
 
       <div class="space-y-5">
-        <div class="${tintBg('pink',8)} border ${tintBorder('pink',35)} rounded-2xl p-5">
+        <div class="border rounded-2xl p-5" style="background-color: ${BRAND.pink.hex}10; border-color: ${BRAND.pink.hex}40">
           <h3 class="text-sm font-bold text-[#14244A] mb-3 flex items-center">${dot('pink')}Single Points of Failure</h3>
           <div class="space-y-2">
             ${spof.map(e => `
@@ -527,7 +499,7 @@ function tplStep2(){
                     <p class="text-sm font-semibold text-[#14244A]">${e.name}</p>
                     <p class="text-xs text-slate-500">${e.role}</p>
                   </div>
-                  <span class="px-1.5 py-0.5 rounded text-[11px] font-semibold ${e.flightRisk==='High'?'text-white':'text-[#14244A] '+tintBg('pink',15)}" ${e.flightRisk==='High'?`style="background:${BRAND.pink.hex}"`:''}>${e.flightRisk} risk</span>
+                  <span class="px-1.5 py-0.5 rounded text-[11px] font-semibold ${e.flightRisk==='High'?'text-white':'text-[#14244A]'}" style="background-color:${e.flightRisk==='High'?BRAND.pink.hex:BRAND.pink.hex+'25'}">${e.flightRisk} risk</span>
                 </div>
                 <p class="text-xs text-slate-600 mt-1.5">${e.successor==='None' ? 'No ready successor identified.' : 'Successor emerging but not ready now.'}</p>
                 <button onclick="sendToSixB(${e.id})" class="mt-2 text-xs font-semibold" style="color:${BRAND.pink.hex}">+ Add to 6 B's Action Plan →</button>
@@ -535,7 +507,7 @@ function tplStep2(){
           </div>
         </div>
 
-        <div id="emp-detail" class="${tintBg('teal',8)} border ${tintBorder('teal',35)} rounded-2xl p-5 ${emp ? '' : 'hidden'}">
+        <div id="emp-detail" class="border rounded-2xl p-5 ${emp ? '' : 'hidden'}" style="background-color: ${BRAND.teal.hex}10; border-color: ${BRAND.teal.hex}40">
           ${emp ? `
             <div class="flex items-start justify-between">
               <div>
@@ -624,9 +596,6 @@ function sendToSixB(empId){
   renderSummary();
 }
 
-// ============================================================
-// STEP 3 — 6 B's KANBAN
-// ============================================================
 const sixBDefs = [
   {key:'Buy', desc:'Hire'},
   {key:'Build', desc:'Develop'},
@@ -656,9 +625,9 @@ function tplStep3(){
 
     <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
       ${sixBDefs.map(b => `
-        <div class="${tintBg(leverColor[b.key],7)} border ${tintBorder(leverColor[b.key],35)} rounded-2xl flex flex-col overflow-hidden">
+        <div class="border rounded-2xl flex flex-col overflow-hidden" style="background-color: ${BRAND[leverColor[b.key]].hex}10; border-color: ${BRAND[leverColor[b.key]].hex}40">
           <div class="h-1.5" style="background:${BRAND[leverColor[b.key]].hex}"></div>
-          <div class="px-3 py-2.5 border-b ${tintBorder(leverColor[b.key],20)} flex items-center justify-between">
+          <div class="px-3 py-2.5 border-b flex items-center justify-between" style="border-color: ${BRAND[leverColor[b.key]].hex}30">
             <div>
               <p class="text-sm font-bold text-[#14244A] flex items-center">${dot(leverColor[b.key])}${b.key}</p>
               <p class="text-xs text-slate-400">${b.desc}</p>
@@ -667,7 +636,7 @@ function tplStep3(){
           </div>
           <div class="lever-col p-2 space-y-2 flex-1 overflow-y-auto max-h-[420px]">
             ${l.actionItems.filter(a => a.lever === b.key).map(a => `
-              <div class="bg-white border ${tintBorder(leverColor[b.key],40)} rounded-xl p-2.5">
+              <div class="bg-white border rounded-xl p-2.5" style="border-color: ${BRAND[leverColor[b.key]].hex}50">
                 <div class="flex items-start justify-between gap-1">
                   <p class="text-sm font-semibold text-[#14244A] leading-snug">${a.label}</p>
                   <button onclick="removeActionItem(${a.id})" class="text-slate-400 hover:text-[#E72175] text-xs shrink-0">✕</button>
@@ -704,12 +673,9 @@ function setItemLever(id, lever){
   renderSummary();
 }
 
-// ============================================================
-// STEP 4 — HEADCOUNT OUTPUT
-// ============================================================
 function tplStep4(){
   const l = leader();
-  const budgetBadge = (range, colorKey) => range ? `<span class="inline-block mt-1.5 px-1.5 py-0.5 rounded text-[11px] font-semibold ${tintBg(colorKey,20)} text-[#14244A]">💰 ${range}</span>` : '';
+  const budgetBadge = (range, colorKey) => range ? `<span class="inline-block mt-1.5 px-1.5 py-0.5 rounded text-[11px] font-semibold text-[#14244A]" style="background-color: ${BRAND[colorKey].hex}30">💰 ${range}</span>` : '';
 
   const baselineCards = l.headcount.baseline.map((it,i) => `
     <div class="border-l-4 rounded-xl p-3 bg-white flex items-start justify-between gap-2" style="border-color:${BRAND[hcColor.baseline].hex}">
@@ -746,7 +712,7 @@ function tplStep4(){
 
   return `
     <div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
-      <div class="${tintBg(hcColor.baseline,8)} border ${tintBorder(hcColor.baseline,35)} rounded-2xl p-5 flex flex-col">
+      <div class="border rounded-2xl p-5 flex flex-col" style="background-color: ${BRAND[hcColor.baseline].hex}10; border-color: ${BRAND[hcColor.baseline].hex}40">
         <div class="flex items-center justify-between mb-3">
           <h3 class="text-sm font-bold text-[#14244A] flex items-center">${dot(hcColor.baseline)}Baseline Headcount</h3>
           <span class="text-xs text-slate-400">${l.headcount.baseline.length} roles</span>
@@ -766,134 +732,4 @@ function tplStep4(){
         </div>
       </div>
 
-      <div class="${tintBg(hcColor.wishlist,8)} border ${tintBorder(hcColor.wishlist,35)} rounded-2xl p-5 flex flex-col">
-        <div class="flex items-center justify-between mb-3">
-          <h3 class="text-sm font-bold text-[#14244A] flex items-center">${dot(hcColor.wishlist)}Dream Wish List</h3>
-          <span class="text-xs text-slate-400">${l.headcount.wishlist.length} roles</span>
-        </div>
-        <div class="space-y-2 flex-1">${wishlistCards}</div>
-        <div class="border-t border-slate-200 mt-4 pt-3 space-y-1.5">
-          <input id="wl-role" placeholder="Role title" class="w-full text-xs bg-white border border-slate-300 text-[#14244A] placeholder-slate-400 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-[#E72175]">
-          <input id="wl-milestone" placeholder="Linked milestone" class="w-full text-xs bg-white border border-slate-300 text-[#14244A] placeholder-slate-400 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-[#E72175]">
-          <input id="wl-timeframe" placeholder="Timeframe" class="w-full text-xs bg-white border border-slate-300 text-[#14244A] placeholder-slate-400 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-[#E72175]">
-          <input id="wl-justification" placeholder="Justification" class="w-full text-xs bg-white border border-slate-300 text-[#14244A] placeholder-slate-400 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-[#E72175]">
-          <input id="wl-budget" placeholder="Budget range, e.g. $120k – $140k" class="w-full text-xs bg-white border border-slate-300 text-[#14244A] placeholder-slate-400 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-[#E72175]">
-          <button onclick="addWishlist()" class="w-full py-1.5 text-xs font-semibold rounded-lg text-[#14244A] hover:opacity-90" style="background:${BRAND[hcColor.wishlist].hex}">+ Add to Wish List</button>
-        </div>
-      </div>
-
-      <div class="${tintBg(hcColor.radar,8)} border ${tintBorder(hcColor.radar,35)} rounded-2xl p-5 flex flex-col">
-        <div class="flex items-center justify-between mb-3">
-          <h3 class="text-sm font-bold text-[#14244A] flex items-center">${dot(hcColor.radar)}Always Be Networking Radar</h3>
-          <span class="text-xs text-slate-400">${l.headcount.radar.length} roles</span>
-        </div>
-        <div class="space-y-2 flex-1">${radarCards}</div>
-        <div class="border-t border-slate-200 mt-4 pt-3 space-y-1.5">
-          <input id="abn-role" placeholder="Role / specialty" class="w-full text-xs bg-white border border-slate-300 text-[#14244A] placeholder-slate-400 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-[#E72175]">
-          <input id="abn-why" placeholder="Why hard to fill" class="w-full text-xs bg-white border border-slate-300 text-[#14244A] placeholder-slate-400 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-[#E72175]">
-          <input id="abn-notes" placeholder="Notes for TA" class="w-full text-xs bg-white border border-slate-300 text-[#14244A] placeholder-slate-400 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-[#E72175]">
-          <input id="abn-budget" placeholder="Budget range, e.g. $120k – $140k" class="w-full text-xs bg-white border border-slate-300 text-[#14244A] placeholder-slate-400 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-[#E72175]">
-          <button onclick="addRadar()" class="w-full py-1.5 text-xs font-semibold rounded-lg text-[#14244A] hover:opacity-90" style="background:${BRAND[hcColor.radar].hex}">+ Add to Radar</button>
-        </div>
-      </div>
-    </div>`;
-}
-
-function addBaseline(){
-  const role = document.getElementById('bl-role').value.trim();
-  if(!role){ alert('Enter a role title.'); return; }
-  leader().headcount.baseline.push({
-    role,
-    notes: document.getElementById('bl-notes').value.trim() || '—',
-    timeframe: document.getElementById('bl-timeframe').value.trim() || '—',
-    status: document.getElementById('bl-status').value,
-    budgetRange: document.getElementById('bl-budget').value.trim() || '—'
-  });
-  renderStepContent(); renderSummary();
-}
-function addWishlist(){
-  const role = document.getElementById('wl-role').value.trim();
-  if(!role){ alert('Enter a role title.'); return; }
-  leader().headcount.wishlist.push({
-    role,
-    milestone: document.getElementById('wl-milestone').value.trim() || '—',
-    timeframe: document.getElementById('wl-timeframe').value.trim() || '—',
-    justification: document.getElementById('wl-justification').value.trim() || '—',
-    budgetRange: document.getElementById('wl-budget').value.trim() || '—'
-  });
-  renderStepContent(); renderSummary();
-}
-function addRadar(){
-  const role = document.getElementById('abn-role').value.trim();
-  if(!role){ alert('Enter a role / specialty.'); return; }
-  leader().headcount.radar.push({
-    role,
-    why: document.getElementById('abn-why').value.trim() || '—',
-    notes: document.getElementById('abn-notes').value.trim() || '—',
-    budgetRange: document.getElementById('abn-budget').value.trim() || '—'
-  });
-  renderStepContent(); renderSummary();
-}
-function removeItem(kind, i){ leader().headcount[kind].splice(i,1); renderStepContent(); renderSummary(); }
-
-// ============================================================
-// SUMMARY DRAWER
-// ============================================================
-function renderSummary(){
-  const l = leader();
-  document.getElementById('summary-leader-name').textContent = l.name;
-  document.getElementById('summary-counts').innerHTML = `
-    <div class="rounded-xl border ${tintBorder(hcColor.baseline,45)} ${tintBg(hcColor.baseline,15)} p-3 text-center">
-      <div class="text-xl font-bold text-[#14244A]">${l.headcount.baseline.length}</div>
-      <div class="text-xs text-[#14244A]/70 flex items-center justify-center">${dot(hcColor.baseline)}Baseline Roles</div>
-    </div>
-    <div class="rounded-xl border ${tintBorder(hcColor.wishlist,45)} ${tintBg(hcColor.wishlist,15)} p-3 text-center">
-      <div class="text-xl font-bold text-[#14244A]">${l.headcount.wishlist.length}</div>
-      <div class="text-xs text-[#14244A]/70 flex items-center justify-center">${dot(hcColor.wishlist)}Dream Wish List</div>
-    </div>
-    <div class="rounded-xl border ${tintBorder(hcColor.radar,45)} ${tintBg(hcColor.radar,15)} p-3 text-center">
-      <div class="text-xl font-bold text-[#14244A]">${l.headcount.radar.length}</div>
-      <div class="text-xs text-[#14244A]/70 flex items-center justify-center">${dot(hcColor.radar)}ABN Radar</div>
-    </div>
-    <div class="rounded-xl border ${tintBorder('midnight',45)} ${tintBg('midnight',15)} p-3 text-center">
-      <div class="text-xl font-bold text-[#14244A]">${l.actionItems.length}</div>
-      <div class="text-xs text-[#14244A]/70 flex items-center justify-center">${dot('midnight')}6 B's Actions</div>
-    </div>`;
-
-  const rows = [];
-  l.headcount.baseline.forEach(i => rows.push({type:'Baseline', item:i.role, detail:i.notes, ref:`${i.timeframe} · ${i.status}`, budget:i.budgetRange || '—', colorKey:hcColor.baseline}));
-  l.headcount.wishlist.forEach(i => rows.push({type:'Wish List', item:i.role, detail:i.justification, ref:`${i.milestone} · ${i.timeframe}`, budget:i.budgetRange || '—', colorKey:hcColor.wishlist}));
-  l.headcount.radar.forEach(i => rows.push({type:'ABN Radar', item:i.role, detail:i.why, ref:i.notes, budget:i.budgetRange || '—', colorKey:hcColor.radar}));
-  l.actionItems.forEach(i => rows.push({type:`6B: ${i.lever}`, item:i.label, detail:i.rationale || '—', ref:'Talent Strategy', budget:'—', colorKey:leverColor[i.lever]}));
-
-  document.getElementById('summary-body').innerHTML = rows.map(r => `
-    <tr class="border-t border-slate-100">
-      <td class="py-2 px-3"><span class="px-2 py-0.5 rounded-full text-[11px] font-semibold ${tintBg(r.colorKey,18)} text-[#14244A]">${r.type}</span></td>
-      <td class="py-2 px-3 font-medium text-[#14244A]">${r.item}</td>
-      <td class="py-2 px-3 text-slate-500">${r.detail}</td>
-      <td class="py-2 px-3 text-slate-400">${r.ref}</td>
-      <td class="py-2 px-3 font-semibold text-[#14244A]">${r.budget}</td>
-    </tr>`).join('') || `<tr><td colspan="5" class="py-3 px-3 text-slate-400 italic">No action items yet.</td></tr>`;
-}
-
-function toggleDrawer(){
-  const body = document.getElementById('drawer-body');
-  const btn = document.getElementById('drawer-toggle-btn');
-  body.classList.toggle('hidden');
-  btn.textContent = body.classList.contains('hidden') ? 'Show ▼' : 'Hide ▲';
-}
-
-// ============================================================
-// GLOBAL RENDER
-// ============================================================
-function renderAll(){
-  renderLeaderNav();
-  renderHeader();
-  renderStepTabs();
-  renderStepContent();
-  renderSummary();
-}
-renderAll();
-</script>
-</body>
-</html>
+      <div class="border rounded-2xl p-5 flex flex-col" style="background-color: ${BRAND[hcColor.wishlist
