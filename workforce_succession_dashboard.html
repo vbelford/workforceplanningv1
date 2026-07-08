@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Workforce & Succession Planning — Executive Session</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  * { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+  ::-webkit-scrollbar { width: 7px; height: 7px; }
+  ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+  .chip { transition: transform .12s ease, box-shadow .12s ease; cursor: grab; }
+  .chip:hover { transform: translateY(-1px); box-shadow: 0 4px 10px rgba(20,36,74,.22); }
+  .chip.dragging { opacity: .35; }
+  .cell-drop { transition: background-color .12s ease; }
+  .cell-drop.drag-over { background-color: rgba(231,33,117,0.10); }
+  .step-panel { animation: fadein .18s ease; }
+  @keyframes fadein { from { opacity: 0; transform: translateY(4px);} to { opacity: 1; transform: translateY(0);} }
+  .lever-col::-webkit-scrollbar { width: 5px; }
+</style>
+</head>
+<body class="bg-slate-50 text-[#14244A] antialiased">
+
+<div class="flex min-h-screen">
+
+  <!-- ================= SIDEBAR ================= -->
+  <aside class="w-64 shrink-0 bg-[#E3B341] flex flex-col">
+    <div class="px-5 py-5 border-b border-[#14244A]/10">
+      <div class="text-sm font-bold tracking-wide uppercase text-[#14244A]">Talent Planning</div>
+      <div class="text-xs text-[#14244A]/60 mt-0.5">Headcount Cycle · <span id="cycle-date"></span></div>
+    </div>
+
+    <div class="px-3 pt-4 pb-2 text-xs font-semibold text-[#14244A]/60 uppercase tracking-wide">Org Leaders</div>
+    <nav id="leader-nav" class="flex-1 overflow-y-auto px-2 space-y-1"></nav>
+
+    <div class="p-3 border-t border-[#14244A]/10">
+      <div id="add-leader-form" class="hidden space-y-1.5 mb-2">
+        <input id="new-leader-name" placeholder="Leader name" class="w-full text-xs bg-white border border-[#14244A]/20 text-[#14244A] placeholder-slate-400 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-[#E72175]">
+        <input id="new-leader-title" placeholder="Function / Department" class="w-full text-xs bg-white border border-[#14244A]/20 text-[#14244A] placeholder-slate-400 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-[#E72175]">
+        <div class="flex gap-1.5">
+          <button onclick="submitAddLeader()" class="flex-1 py-1.5 text-xs font-semibold bg-[#E72175] text-white rounded-lg hover:opacity-90">Add</button>
+          <button onclick="toggleAddLeaderForm(false)" class="flex-1 py-1.5 text-xs font-medium bg-white text-[#14244A] rounded-lg hover:bg-white/70">Cancel</button>
+        </div>
+      </div>
+      <button id="add-leader-btn" onclick="toggleAddLeaderForm(true)" class="w-full flex items-center justify-center gap-1.5 py-2 text-xs font-medium text-[#14244A]/70 border border-dashed border-[#14244A]/30 rounded-lg hover:border-[#14244A]/60 hover:text-[#14244A]">
+        <span class="text-base leading-none">+</span> Add Org Leader
+      </button>
+    </div>
+  </aside>
+
+  <!-- ================= MAIN ================= -->
+  <div class="flex-1 flex flex-col min-w-0">
+
+    <!-- HEADER -->
+    <header class="bg-white border-b border-slate-200 px-8 py-5 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div id="header-avatar" class="w-10 h-10 rounded-full flex items-center justify-center font-semibold text-sm"></div>
+        <div>
+          <h1 id="header-name" class="text-lg font-bold text-[#14244A] leading-tight"></h1>
+          <p id="header-title" class="text-xs text-slate-500"></p>
+        </div>
+      </div>
+      <button onclick="window.print()" class="px-4 py-2 text-xs font-semibold bg-[#E72175] text-white rounded-lg hover:opacity-90">Export Session</button>
+    </header>
+
+    <!-- STEP TABS -->
+    <div class="bg-white border-b border-slate-200 px-8">
+      <div class="flex gap-1" id="step-tabs"></div>
+    </div>
+
+    <!-- STEP CONTENT -->
+    <main class="flex-1 overflow-y-auto px-8 py-6" id="step-content"></main>
+
+    <!-- SUMMARY DRAWER -->
+    <footer class="bg-white border-t border-slate-200 px-8 py-4">
+      <div class="flex items-center justify-between cursor-pointer" onclick="toggleDrawer()">
+        <h2 class="text-sm font-bold text-[#14244A]">Live Summary — <span id="summary-leader-name"></span></h2>
+        <button id="drawer-toggle-btn" class="text-xs font-medium text-slate-500 hover:text-[#14244A]">Hide ▲</button>
+      </div>
+      <div id="drawer-body" class="mt-3">
+        <div class="grid grid-cols-4 gap-3 mb-4" id="summary-counts"></div>
+        <div class="border border-slate-200 rounded-xl overflow-hidden">
+          <table class="w-full text-xs">
+            <thead class="bg-slate-50 text-slate-500">
+              <tr class="text-left">
+                <th class="py-2 px-3 font-semibold">Category</th>
+                <th class="py-2 px-3 font-semibold">Item</th>
+                <th class="py-2 px-3 font-semibold">Detail</th>
+                <th class="py-2 px-3 font-semibold">Reference</th>
+                <th class="py-2 px-3 font-semibold">Budget Range</th>
+              </tr>
+            </thead>
+            <tbody id="summary-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </footer>
+  </div>
+</div>
+
+<script>
+document.getElementById('cycle-date').textContent = new Date().toLocaleDateString('en-US', {year:'numeric', month:'long', day:'numeric'});
+
+// ============================================================
+// BRAND COLORS (Cognitiv)
+// ============================================================
+const BRAND = {
+  pink:     { hex:'#E72175', text:'text-white' },
+  blue:     { hex:'#015BD7', text:'text-white' },
+  midnight: { hex:'#14244A', text:'text-white' },
+  teal:     { hex:'#2ED9C3', text:'text-[#14244A]' },
+  yellow:   { hex:'#FFCF01', text:'text-[#14244A]' },
+  slate:    { hex:'#64748b', text:'text-white' }
+};
+const leaderColorOrder = ['pink','yellow','teal','midnight','blue'];
+const leverColor = { Buy:'yellow', Build:'pink', Borrow:'teal', Bound:'blue', Bind:'midnight', Bounce:'slate' };
+const hcColor = { baseline:'pink', wishlist:'teal', radar:'yellow' };
+
+function solidClass(key){ return `bg-[${BRAND[key].hex}] ${BRAND[key].text}`; }
+function tintBg(key, pct){ return `bg-[${BRAND[key].hex}]/${pct}`; }
+function tintBorder(key, pct){ return `border-[${BRAND[key].hex}]/${pct}`; }
+function dot(key){ return `<span class="inline-block w-2 h-2 rounded-full mr-1.5 align-middle" style="background:${BRAND[key].hex}"></span>`; }
+
+// ============================================================
+// STATE
+// ============================================================
+let currentStep = 1;
+let currentLeaderId = 'eng';
+let selectedEmployeeId = null;
+
+const state = {
+  order: ['eng','product','marketing'],
+  leaders: {
+    eng: {
+      name: 'Sarah Kim', title: 'Engineering', color: 'pink',
+      companyOKRs: [
+        {objective:'Ship the ML-driven bidding platform', krs:['Migrate 80% of legacy traffic off v1 infra by Q2','Launch adaptive bidding in 2 pilot verticals']}
+      ],
+      teamOKRs: [
+        {objective:'Build platform reliability for the new bidding engine', krs:['99.95% uptime on core services','Reduce on-call incidents 30% QoQ']}
+      ],
+      direction: "Over the next 6 months we're shifting from rules-based targeting to an ML-driven bidding platform and piloting two new verticals. Support burden on legacy pipelines should shrink as we deprecate v1 infra by Q2.",
+      skillTags: ['MLOps', 'Applied ML', 'Platform Reliability'],
+      budgetNote: 'Net-new hiring capped at +3 headcount this half; backfills approved case-by-case.',
+      employees: [
+        {id:1, name:'Priya Nair', role:'Staff ML Engineer', critical:true, perf:3, pot:3, flightRisk:'High', successor:'None'},
+        {id:2, name:'Diego Alvarez', role:'Platform Eng Manager', critical:true, perf:3, pot:2, flightRisk:'Med', successor:'Emerging'},
+        {id:3, name:'Wei Zhang', role:'Senior Backend Eng', critical:false, perf:2, pot:2, flightRisk:'Low', successor:'Ready Now'},
+        {id:4, name:'Amara Okonkwo', role:'Data Scientist', critical:true, perf:3, pot:2, flightRisk:'Low', successor:'None'},
+        {id:5, name:'Tom Bergeron', role:'Support Eng (legacy v1)', critical:false, perf:1, pot:1, flightRisk:'Low', successor:'None'},
+        {id:6, name:'Hana Kobayashi', role:'Frontend Eng', critical:false, perf:2, pot:3, flightRisk:'Med', successor:'Emerging'},
+        {id:7, name:'Sam Whitfield', role:'QA Lead', critical:false, perf:1, pot:2, flightRisk:'Low', successor:'Ready Now'},
+        {id:8, name:'Lena Fischer', role:'Sr. Product Manager', critical:true, perf:3, pot:3, flightRisk:'Med', successor:'None'},
+        {id:9, name:'Marcus Reed', role:'DevOps Eng', critical:false, perf:2, pot:1, flightRisk:'High', successor:'None'}
+      ],
+      nextEmployeeId: 10,
+      actionItems: [
+        {id:1, label:'Priya Nair — Staff ML Engineer', rationale:'No ready successor for critical ML platform knowledge.', lever:'Bind'},
+        {id:2, label:'MLOps Engineer', rationale:'New skill gap from bidding platform migration.', lever:'Buy'}
+      ],
+      nextActionId: 3,
+      headcount: {
+        baseline: [
+          {role:'Senior ML Engineer', notes:'Approved backfill for planned attrition', timeframe:'Q3', status:'Approved', budgetRange:'$165k – $195k'},
+          {role:'Backend Engineer II', notes:'Net-new, supports vertical expansion', timeframe:'Q3', status:'Approved', budgetRange:'$130k – $155k'},
+          {role:'Support Engineer (v1 sunset)', notes:'Contract-to-perm eval, role shrinks post migration', timeframe:'Q4', status:'Under Review', budgetRange:'$95k – $115k'}
+        ],
+        wishlist: [
+          {role:'Staff Platform Architect', milestone:'ML bidding platform launch', timeframe:'Q1 2027', justification:'Needed to scale infra beyond pilot verticals', budgetRange:'$190k – $225k'}
+        ],
+        radar: [
+          {role:'Applied Cryptography Engineer', why:'Extremely scarce specialty, 12+ mo hiring cycles historically', notes:'Start relationship-building now for eventual data-privacy workstream', budgetRange:'$170k – $210k'}
+        ]
+      }
+    },
+    product: {
+      name: 'David Chen', title: 'Product', color: 'yellow',
+      companyOKRs: [
+        {objective:'Expand into two new verticals', krs:['Launch vertical-specific onboarding by Q3','Reach 50 design partners per vertical']}
+      ],
+      teamOKRs: [
+        {objective:'Validate product-market fit in new verticals', krs:['Ship 3 discovery-stage prototypes','Complete 40 customer interviews']}
+      ],
+      direction: 'Over the next 6 months, Product is moving from a single horizontal offering toward a multi-vertical suite. We need PMs and researchers who can operate without an established playbook.',
+      skillTags: ['Vertical GTM', 'Applied Research'],
+      budgetNote: 'One approved net-new req this half; everything else routes through Dream Wish List.',
+      employees: [
+        {id:101, name:'Nadia Torres', role:'Group PM', critical:true, perf:3, pot:3, flightRisk:'Low', successor:'Emerging'},
+        {id:102, name:'Ben Ostrowski', role:'Senior PM', critical:false, perf:2, pot:2, flightRisk:'Med', successor:'Ready Now'},
+        {id:103, name:'Yuki Tanaka', role:'Product Researcher', critical:true, perf:3, pot:2, flightRisk:'High', successor:'None'},
+        {id:104, name:'Carlos Mendes', role:'Associate PM', critical:false, perf:1, pot:3, flightRisk:'Low', successor:'None'},
+        {id:105, name:'Grace Liu', role:'Product Analyst', critical:false, perf:2, pot:1, flightRisk:'Low', successor:'Ready Now'}
+      ],
+      nextEmployeeId: 106,
+      actionItems: [
+        {id:1, label:'Yuki Tanaka — Product Researcher', rationale:'High flight risk, no successor identified.', lever:'Bound'}
+      ],
+      nextActionId: 2,
+      headcount: {
+        baseline: [
+          {role:'Senior Product Researcher', notes:'Approved net-new for vertical discovery', timeframe:'Q3', status:'Approved', budgetRange:'$140k – $165k'}
+        ],
+        wishlist: [
+          {role:'Vertical GTM Lead', milestone:'Vertical onboarding launch', timeframe:'Q4 2026', justification:'Own go-to-market motion per vertical', budgetRange:'$150k – $180k'}
+        ],
+        radar: []
+      }
+    },
+    marketing: {
+      name: 'Elena Petrova', title: 'Marketing', color: 'teal',
+      companyOKRs: [
+        {objective:'Establish brand presence in two new verticals', krs:['Launch vertical brand campaigns by Q4','Achieve 25% aided awareness in target segments']}
+      ],
+      teamOKRs: [
+        {objective:'Build repeatable vertical launch playbook', krs:['Ship first vertical launch campaign','Document playbook for reuse']}
+      ],
+      direction: 'Over the next 6 months, Marketing needs to stand up brand and demand-gen motions for two new verticals simultaneously, without doubling headcount.',
+      skillTags: ['Vertical Positioning', 'Lifecycle Marketing'],
+      budgetNote: 'Flat headcount this half; efficiency gains expected from tooling investment.',
+      employees: [
+        {id:201, name:'Omar Haddad', role:'Head of Brand', critical:true, perf:3, pot:2, flightRisk:'Med', successor:'None'},
+        {id:202, name:'Julia Novak', role:'Lifecycle Marketing Mgr', critical:false, perf:2, pot:3, flightRisk:'Low', successor:'Emerging'},
+        {id:203, name:'Ravi Deshmukh', role:'Content Strategist', critical:false, perf:2, pot:2, flightRisk:'Low', successor:'Ready Now'},
+        {id:204, name:'Chloe Martin', role:'Marketing Ops', critical:false, perf:1, pot:1, flightRisk:'Low', successor:'None'}
+      ],
+      nextEmployeeId: 205,
+      actionItems: [],
+      nextActionId: 1,
+      headcount: {
+        baseline: [
+          {role:'Vertical Content Lead', notes:'Approved backfill + scope expansion', timeframe:'Q3', status:'Under Review', budgetRange:'$100k – $125k'}
+        ],
+        wishlist: [],
+        radar: [
+          {role:'Lifecycle/CRM Specialist', why:'Niche tooling expertise, thin talent pool', notes:'Network via marketing ops communities', budgetRange:'$110k – $135k'}
+        ]
+      }
+    }
+  }
+};
+
+function leader() { return state.leaders[currentLeaderId]; }
+
+// ============================================================
+// SIDEBAR / LEADER NAV
+// ============================================================
+function initials(name){ return name.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase(); }
+
+function renderLeaderNav(){
+  const nav = document.getElementById('leader-nav');
+  nav.innerHTML = '';
+  state.order.forEach(id => {
+    const l = state.leaders[id];
+    const active = id === currentLeaderId;
+    const btn = document.createElement('button');
+    btn.className = `w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-left border-l-2 ${active ? 'bg-white/70 border-[#14244A]' : 'border-transparent hover:bg-white/40'}`;
+    btn.innerHTML = `
+      <span class="w-8 h-8 shrink-0 rounded-full ring-2 ring-white ${solidClass(l.color)} flex items-center justify-center text-xs font-bold">${initials(l.name)}</span>
+      <span class="min-w-0">
+        <span class="block text-sm font-semibold text-[#14244A] truncate">${l.name}</span>
+        <span class="block text-xs text-[#14244A]/60 truncate">${l.title}</span>
+      </span>`;
+    btn.onclick = () => selectLeader(id);
+    nav.appendChild(btn);
+  });
+}
+
+function toggleAddLeaderForm(show){
+  document.getElementById('add-leader-form').classList.toggle('hidden', !show);
+  document.getElementById('add-leader-btn').classList.toggle('hidden', show);
+}
+
+function submitAddLeader(){
+  const name = document.getElementById('new-leader-name').value.trim();
+  const title = document.getElementById('new-leader-title').value.trim();
+  if(!name || !title){ alert('Enter a name and function/department.'); return; }
+  const id = 'leader_' + Date.now();
+  const color = leaderColorOrder[state.order.length % leaderColorOrder.length];
+  state.leaders[id] = {
+    name, title, color,
+    companyOKRs: [], teamOKRs: [],
+    direction: '', skillTags: [], budgetNote: '',
+    employees: [], nextEmployeeId: 1,
+    actionItems: [], nextActionId: 1,
+    headcount: {baseline:[], wishlist:[], radar:[]}
+  };
+  state.order.push(id);
+  document.getElementById('new-leader-name').value = '';
+  document.getElementById('new-leader-title').value = '';
+  toggleAddLeaderForm(false);
+  selectLeader(id);
+}
+
+function selectLeader(id){
+  currentLeaderId = id;
+  selectedEmployeeId = null;
+  currentStep = 1;
+  renderAll();
+}
+
+// ============================================================
+// HEADER + STEP TABS
+// ============================================================
+const stepDefs = [
+  {n:1, label:'Business Context & 6-Mo OKRs'},
+  {n:2, label:'Team Health & 9-Box'},
+  {n:3, label:"6 B's Talent Strategy"},
+  {n:4, label:'Headcount Output'}
+];
+
+function renderHeader(){
+  const l = leader();
+  document.getElementById('header-avatar').className = `w-10 h-10 rounded-full flex items-center justify-center font-semibold text-sm ${solidClass(l.color)}`;
+  document.getElementById('header-avatar').textContent = initials(l.name);
+  document.getElementById('header-name').textContent = l.name;
+  document.getElementById('header-title').textContent = l.title + ' · Headcount Planning Session';
+  document.getElementById('summary-leader-name').textContent = l.name;
+}
+
+function renderStepTabs(){
+  const wrap = document.getElementById('step-tabs');
+  wrap.innerHTML = stepDefs.map(s => `
+    <button onclick="goStep(${s.n})" class="px-4 py-3 text-sm font-medium border-b-2 -mb-px ${currentStep===s.n ? 'border-[#E72175] text-[#14244A]' : 'border-transparent text-slate-400 hover:text-slate-600'}">
+      <span class="inline-flex items-center justify-center w-5 h-5 rounded-full text-xs mr-1.5 ${currentStep===s.n ? 'bg-[#E72175] text-white' : 'bg-slate-100 text-slate-500'}">${s.n}</span>${s.label}
+    </button>`).join('');
+}
+
+function goStep(n){ currentStep = n; renderStepTabs(); renderStepContent(); }
+
+// ============================================================
+// STEP DISPATCH
+// ============================================================
+function renderStepContent(){
+  const main = document.getElementById('step-content');
+  main.className = 'flex-1 overflow-y-auto px-8 py-6 step-panel';
+  if(currentStep===1) main.innerHTML = tplStep1();
+  if(currentStep===2) main.innerHTML = tplStep2();
+  if(currentStep===3) main.innerHTML = tplStep3();
+  if(currentStep===4) main.innerHTML = tplStep4();
+  if(currentStep===1) renderSkillTagsInline();
+  if(currentStep===2) wireStep2();
+}
+
+// ============================================================
+// STEP 1 — BUSINESS CONTEXT & OKRs
+// ============================================================
+function tplStep1(){
+  const l = leader();
+  const okrCard = (title, list, kind, colorKey) => `
+    <div class="${tintBg(colorKey,10)} border ${tintBorder(colorKey,35)} rounded-2xl p-5">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-sm font-bold text-[#14244A] flex items-center">${dot(colorKey)}${title}</h3>
+      </div>
+      <div class="space-y-3">
+        ${list.map((o,oi) => `
+          <div class="border border-slate-200 rounded-xl p-3 bg-white">
+            <div class="flex items-start justify-between gap-2">
+              <p class="text-sm font-semibold text-[#14244A]">${o.objective}</p>
+              <button onclick="removeOKR('${kind}',${oi})" class="text-slate-400 hover:text-[#E72175] text-xs">✕</button>
+            </div>
+            <ul class="mt-2 space-y-1">
+              ${o.krs.map((kr,ki) => `
+                <li class="flex items-start gap-2 text-xs text-slate-600">
+                  <span class="mt-1 w-1.5 h-1.5 rounded-full shrink-0" style="background:${BRAND[colorKey].hex}"></span>
+                  <span class="flex-1">${kr}</span>
+                  <button onclick="removeKR('${kind}',${oi},${ki})" class="text-slate-400 hover:text-[#E72175]">✕</button>
+                </li>`).join('')}
+            </ul>
+            <div class="flex gap-1.5 mt-2">
+              <input id="${kind}-kr-input-${oi}" placeholder="Add key result..." class="flex-1 text-xs bg-white border border-slate-300 text-[#14244A] placeholder-slate-400 rounded-lg px-2 py-1 outline-none focus:ring-2 focus:ring-[#E72175]">
+              <button onclick="addKR('${kind}',${oi})" class="px-2 py-1 text-xs font-medium bg-white border border-slate-300 text-slate-600 rounded-lg hover:bg-slate-100">Add</button>
+            </div>
+          </div>`).join('') || `<p class="text-xs text-slate-400 italic">No objectives yet.</p>`}
+      </div>
+      <div class="flex gap-1.5 mt-3">
+        <input id="${kind}-obj-input" placeholder="New objective..." class="flex-1 text-xs bg-white border border-slate-300 text-[#14244A] placeholder-slate-400 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-[#E72175]">
+        <button onclick="addOKR('${kind}')" class="px-3 py-1.5 text-xs font-semibold bg-[#E72175] text-white rounded-lg hover:opacity-90">+ Objective</button>
+      </div>
+    </div>`;
+
+  return `
+    <div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
+      ${okrCard('Company OKRs — Current Half', l.companyOKRs, 'companyOKRs', 'blue')}
+      ${okrCard('Team OKRs — Current Half', l.teamOKRs, 'teamOKRs', 'teal')}
+      <div class="${tintBg('pink',10)} border ${tintBorder('pink',35)} rounded-2xl p-5 space-y-4">
+        <h3 class="text-sm font-bold text-[#14244A] flex items-center">${dot('pink')}Strategic Direction — Next 6 Months</h3>
+        <div>
+          <label class="text-xs font-medium text-slate-500 uppercase tracking-wide">Where is the business going over the next 6 months?</label>
+          <textarea onchange="updateDirection(this.value)" rows="5" class="mt-1.5 w-full text-sm bg-white border border-slate-300 text-[#14244A] rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-[#E72175] leading-relaxed">${l.direction}</textarea>
+        </div>
+        <div>
+          <label class="text-xs font-medium text-slate-500 uppercase tracking-wide">Skill shift tags</label>
+          <div class="flex flex-wrap gap-1.5 mt-1.5" id="skill-tags"></div>
+          <div class="flex gap-1.5 mt-2">
+            <input id="skill-input" placeholder="e.g. MLOps" class="flex-1 text-xs bg-white border border-slate-300 text-[#14244A] placeholder-slate-400 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-[#E72175]">
+            <button onclick="addSkillTag()" class="px-3 py-1.5 text-xs font-medium bg-white border border-slate-300 text-slate-600 rounded-lg hover:bg-slate-100">Add</button>
+          </div>
+        </div>
+        <div>
+          <label class="text-xs font-medium text-slate-500 uppercase tracking-wide">Budget / constraint note</label>
+          <textarea onchange="updateBudget(this.value)" rows="3" class="mt-1.5 w-full text-sm bg-white border border-slate-300 text-[#14244A] rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-[#E72175] leading-relaxed">${l.budgetNote}</textarea>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderSkillTagsInline(){
+  const wrap = document.getElementById('skill-tags');
+  if(!wrap) return;
+  const l = leader();
+  wrap.innerHTML = l.skillTags.map((t,i) => `
+    <span class="px-2.5 py-1 rounded-full ${tintBg(l.color,15)} text-[#14244A] text-xs font-medium flex items-center gap-1.5">
+      ${dot(l.color)}${t}<button onclick="removeSkillTag(${i})" class="text-slate-400 hover:text-[#E72175]">✕</button>
+    </span>`).join('') || `<p class="text-xs text-slate-400 italic">No tags yet.</p>`;
+}
+
+function addOKR(kind){
+  const input = document.getElementById(kind+'-obj-input');
+  const val = input.value.trim();
+  if(!val) return;
+  leader()[kind].push({objective: val, krs: []});
+  renderStepContent();
+}
+function removeOKR(kind, oi){ leader()[kind].splice(oi,1); renderStepContent(); }
+function addKR(kind, oi){
+  const input = document.getElementById(`${kind}-kr-input-${oi}`);
+  const val = input.value.trim();
+  if(!val) return;
+  leader()[kind][oi].krs.push(val);
+  renderStepContent();
+}
+function removeKR(kind, oi, ki){ leader()[kind][oi].krs.splice(ki,1); renderStepContent(); }
+function updateDirection(v){ leader().direction = v; }
+function updateBudget(v){ leader().budgetNote = v; }
+function addSkillTag(){
+  const input = document.getElementById('skill-input');
+  if(input.value.trim()){ leader().skillTags.push(input.value.trim()); input.value=''; renderSkillTagsInline(); }
+}
+function removeSkillTag(i){ leader().skillTags.splice(i,1); renderSkillTagsInline(); }
+
+// ============================================================
+// STEP 2 — 9-BOX + SPOF
+// ============================================================
+const boxLabel = {
+  '1,3':'Rough Diamond', '2,3':'Future Star', '3,3':'Star',
+  '1,2':'Inconsistent Player', '2,2':'Core Player', '3,2':'High Performer',
+  '1,1':'Risk', '2,1':'Solid Performer', '3,1':'Trusted Professional'
+};
+
+function tplStep2(){
+  const l = leader();
+  const rows = [3,2,1];
+  const potLabels = {3:'High Potential', 2:'Medium Potential', 1:'Low Potential'};
+  const perfLabels = {1:'Low Performance', 2:'Medium Performance', 3:'High Performance'};
+
+  let gridHtml = `<div class="grid" style="grid-template-columns: 120px repeat(3, 1fr); grid-template-rows: auto repeat(3, minmax(110px,1fr)); gap: 6px;">`;
+  gridHtml += `<div></div>`;
+  [1,2,3].forEach(p => gridHtml += `<div class="text-center text-xs font-semibold text-slate-500 pb-1">${perfLabels[p]}</div>`);
+  rows.forEach(pot => {
+    gridHtml += `<div class="flex items-center justify-end pr-3 text-xs font-semibold text-slate-500 text-right">${potLabels[pot]}</div>`;
+    [1,2,3].forEach(perf => {
+      const members = l.employees.filter(e => e.perf===perf && e.pot===pot);
+      gridHtml += `
+        <div class="cell-drop rounded-xl border border-slate-200 bg-white p-2" data-perf="${perf}" data-pot="${pot}">
+          <div class="text-[11px] font-medium text-slate-400 mb-1.5">${boxLabel[`${perf},${pot}`]}</div>
+          <div class="flex flex-wrap gap-1.5">
+            ${members.map(e => `
+              <div class="chip w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-white ${selectedEmployeeId===e.id ? 'ring-2 ring-offset-2 ring-[#E72175]' : ''}"
+                   style="background:${e.critical ? BRAND.pink.hex : BRAND.midnight.hex}"
+                   draggable="true" data-id="${e.id}" title="${e.name} — ${e.role}">
+                ${initials(e.name)}
+              </div>`).join('')}
+          </div>
+        </div>`;
+    });
+  });
+  gridHtml += `</div>`;
+
+  const spof = l.employees.filter(e => e.critical && (e.successor==='None' || e.flightRisk==='High'));
+  const emp = selectedEmployeeId ? l.employees.find(e=>e.id===selectedEmployeeId) : null;
+
+  return `
+    <div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
+      <div class="xl:col-span-2 ${tintBg('blue',8)} border ${tintBorder('blue',35)} rounded-2xl p-5">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-sm font-bold text-[#14244A] flex items-center">${dot('blue')}9-Box Grid</h3>
+          <span class="text-xs text-slate-400">Drag a person between boxes to recalibrate</span>
+        </div>
+        ${gridHtml}
+        <div class="flex items-center gap-4 mt-3 text-xs text-slate-500">
+          <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full inline-block" style="background:${BRAND.pink.hex}"></span>Critical role</span>
+          <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full inline-block" style="background:${BRAND.midnight.hex}"></span>Standard role</span>
+        </div>
+
+        <div class="mt-5 pt-5 border-t border-slate-200">
+          <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Add Team Member</h4>
+          <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
+            <input id="emp-name" placeholder="Name" class="text-xs bg-white border border-slate-300 text-[#14244A] placeholder-slate-400 rounded-lg px-2.5 py-1.5 col-span-2 outline-none focus:ring-2 focus:ring-[#E72175]">
+            <input id="emp-role" placeholder="Role" class="text-xs bg-white border border-slate-300 text-[#14244A] placeholder-slate-400 rounded-lg px-2.5 py-1.5 col-span-2 outline-none focus:ring-2 focus:ring-[#E72175]">
+            <select id="emp-critical" class="text-xs bg-white border border-slate-300 text-[#14244A] rounded-lg px-2 py-1.5 outline-none focus:ring-2 focus:ring-[#E72175]">
+              <option value="false">Standard</option>
+              <option value="true">Critical role</option>
+            </select>
+            <select id="emp-risk" class="text-xs bg-white border border-slate-300 text-[#14244A] rounded-lg px-2 py-1.5 outline-none focus:ring-2 focus:ring-[#E72175]">
+              <option>Low</option><option>Med</option><option>High</option>
+            </select>
+            <select id="emp-successor" class="text-xs bg-white border border-slate-300 text-[#14244A] rounded-lg px-2 py-1.5 outline-none focus:ring-2 focus:ring-[#E72175]">
+              <option>None</option><option>Emerging</option><option>Ready Now</option>
+            </select>
+            <button onclick="addEmployee()" class="text-xs font-semibold bg-[#E72175] text-white rounded-lg px-3 py-1.5 hover:opacity-90">+ Add</button>
+          </div>
+          <p class="text-xs text-slate-400 mt-1.5">New members start as a Core Player — drag into the correct box above.</p>
+        </div>
+      </div>
+
+      <div class="space-y-5">
+        <div class="${tintBg('pink',8)} border ${tintBorder('pink',35)} rounded-2xl p-5">
+          <h3 class="text-sm font-bold text-[#14244A] mb-3 flex items-center">${dot('pink')}Single Points of Failure</h3>
+          <div class="space-y-2">
+            ${spof.map(e => `
+              <div class="border-l-4 rounded-xl p-3 bg-white" style="border-color:${BRAND.pink.hex}">
+                <div class="flex items-start justify-between gap-2">
+                  <div>
+                    <p class="text-sm font-semibold text-[#14244A]">${e.name}</p>
+                    <p class="text-xs text-slate-500">${e.role}</p>
+                  </div>
+                  <span class="px-1.5 py-0.5 rounded text-[11px] font-semibold ${e.flightRisk==='High'?'text-white':'text-[#14244A] '+tintBg('pink',15)}" ${e.flightRisk==='High'?`style="background:${BRAND.pink.hex}"`:''}>${e.flightRisk} risk</span>
+                </div>
+                <p class="text-xs text-slate-600 mt-1.5">${e.successor==='None' ? 'No ready successor identified.' : 'Successor emerging but not ready now.'}</p>
+                <button onclick="sendToSixB(${e.id})" class="mt-2 text-xs font-semibold" style="color:${BRAND.pink.hex}">+ Add to 6 B's Action Plan →</button>
+              </div>`).join('') || `<p class="text-xs text-slate-400 italic">No single points of failure flagged.</p>`}
+          </div>
+        </div>
+
+        <div id="emp-detail" class="${tintBg('teal',8)} border ${tintBorder('teal',35)} rounded-2xl p-5 ${emp ? '' : 'hidden'}">
+          ${emp ? `
+            <div class="flex items-start justify-between">
+              <div>
+                <p class="text-sm font-bold text-[#14244A]">${emp.name}</p>
+                <p class="text-xs text-slate-500">${emp.role}</p>
+              </div>
+              <button onclick="removeEmployee(${emp.id})" class="text-slate-400 hover:text-[#E72175] text-xs">Remove</button>
+            </div>
+            <div class="grid grid-cols-2 gap-y-1.5 text-xs text-slate-500 mt-3">
+              <div>Critical role</div><div class="font-medium text-[#14244A]">${emp.critical ? 'Yes' : 'No'}</div>
+              <div>Flight risk</div><div class="font-medium text-[#14244A]">${emp.flightRisk}</div>
+              <div>Successor</div><div class="font-medium text-[#14244A]">${emp.successor}</div>
+              <div>9-box position</div><div class="font-medium text-[#14244A]">${boxLabel[`${emp.perf},${emp.pot}`]}</div>
+            </div>
+            <button onclick="sendToSixB(${emp.id})" class="mt-3 w-full py-1.5 text-xs font-semibold bg-[#E72175] text-white rounded-lg hover:opacity-90">+ Add to 6 B's Action Plan</button>
+          ` : ''}
+        </div>
+      </div>
+    </div>`;
+}
+
+function wireStep2(){
+  document.querySelectorAll('.chip').forEach(chip => {
+    chip.addEventListener('dragstart', e => {
+      chip.classList.add('dragging');
+      e.dataTransfer.setData('text/plain', chip.dataset.id);
+    });
+    chip.addEventListener('dragend', () => chip.classList.remove('dragging'));
+    chip.addEventListener('click', () => { selectedEmployeeId = Number(chip.dataset.id); renderStepContent(); });
+  });
+  document.querySelectorAll('.cell-drop').forEach(cell => {
+    cell.addEventListener('dragover', e => { e.preventDefault(); cell.classList.add('drag-over'); });
+    cell.addEventListener('dragleave', () => cell.classList.remove('drag-over'));
+    cell.addEventListener('drop', e => {
+      e.preventDefault();
+      cell.classList.remove('drag-over');
+      const id = Number(e.dataTransfer.getData('text/plain'));
+      const emp = leader().employees.find(x => x.id === id);
+      if(emp){
+        emp.perf = Number(cell.dataset.perf);
+        emp.pot = Number(cell.dataset.pot);
+        renderStepContent();
+      }
+    });
+  });
+}
+
+function addEmployee(){
+  const name = document.getElementById('emp-name').value.trim();
+  const role = document.getElementById('emp-role').value.trim();
+  if(!name || !role){ alert('Enter a name and role.'); return; }
+  const l = leader();
+  l.employees.push({
+    id: l.nextEmployeeId++,
+    name, role,
+    critical: document.getElementById('emp-critical').value === 'true',
+    perf: 2, pot: 2,
+    flightRisk: document.getElementById('emp-risk').value,
+    successor: document.getElementById('emp-successor').value
+  });
+  renderStepContent();
+}
+function removeEmployee(id){
+  const l = leader();
+  l.employees = l.employees.filter(e => e.id !== id);
+  l.actionItems = l.actionItems.filter(a => a.empId !== id);
+  if(selectedEmployeeId === id) selectedEmployeeId = null;
+  renderStepContent();
+  renderSummary();
+}
+
+function sendToSixB(empId){
+  const l = leader();
+  const e = l.employees.find(x => x.id === empId);
+  if(!e) return;
+  l.actionItems.push({
+    id: l.nextActionId++,
+    label: `${e.name} — ${e.role}`,
+    rationale: e.successor==='None' ? 'No ready successor identified.' : 'High flight risk — retention/succession action needed.',
+    lever: 'Bind',
+    empId: e.id
+  });
+  currentStep = 3;
+  renderStepTabs();
+  renderStepContent();
+  renderSummary();
+}
+
+// ============================================================
+// STEP 3 — 6 B's KANBAN
+// ============================================================
+const sixBDefs = [
+  {key:'Buy', desc:'Hire'},
+  {key:'Build', desc:'Develop'},
+  {key:'Borrow', desc:'Contractor'},
+  {key:'Bound', desc:'Retain'},
+  {key:'Bounce', desc:'Manage Out'},
+  {key:'Bind', desc:'Succession'}
+];
+
+function tplStep3(){
+  const l = leader();
+  return `
+    <div class="mb-4 flex items-end justify-between gap-4 flex-wrap">
+      <div>
+        <h3 class="text-sm font-bold text-[#14244A]">Talent Strategy Levers</h3>
+        <p class="text-xs text-slate-400 mt-0.5">Tag every open role or talent risk with the right lever.</p>
+      </div>
+      <div class="flex gap-1.5 flex-wrap">
+        <input id="newitem-label" placeholder="Role or person" class="text-xs bg-white border border-slate-300 text-[#14244A] placeholder-slate-400 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-[#E72175] w-40">
+        <input id="newitem-rationale" placeholder="Rationale" class="text-xs bg-white border border-slate-300 text-[#14244A] placeholder-slate-400 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-[#E72175] w-48">
+        <select id="newitem-lever" class="text-xs bg-white border border-slate-300 text-[#14244A] rounded-lg px-2 py-1.5 outline-none focus:ring-2 focus:ring-[#E72175]">
+          ${sixBDefs.map(b => `<option value="${b.key}">${b.key} (${b.desc})</option>`).join('')}
+        </select>
+        <button onclick="addActionItem()" class="px-3 py-1.5 text-xs font-semibold bg-[#E72175] text-white rounded-lg hover:opacity-90">+ Add</button>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+      ${sixBDefs.map(b => `
+        <div class="${tintBg(leverColor[b.key],7)} border ${tintBorder(leverColor[b.key],35)} rounded-2xl flex flex-col overflow-hidden">
+          <div class="h-1.5" style="background:${BRAND[leverColor[b.key]].hex}"></div>
+          <div class="px-3 py-2.5 border-b ${tintBorder(leverColor[b.key],20)} flex items-center justify-between">
+            <div>
+              <p class="text-sm font-bold text-[#14244A] flex items-center">${dot(leverColor[b.key])}${b.key}</p>
+              <p class="text-xs text-slate-400">${b.desc}</p>
+            </div>
+            <span class="text-xs font-semibold text-slate-400">${l.actionItems.filter(a=>a.lever===b.key).length}</span>
+          </div>
+          <div class="lever-col p-2 space-y-2 flex-1 overflow-y-auto max-h-[420px]">
+            ${l.actionItems.filter(a => a.lever === b.key).map(a => `
+              <div class="bg-white border ${tintBorder(leverColor[b.key],40)} rounded-xl p-2.5">
+                <div class="flex items-start justify-between gap-1">
+                  <p class="text-sm font-semibold text-[#14244A] leading-snug">${a.label}</p>
+                  <button onclick="removeActionItem(${a.id})" class="text-slate-400 hover:text-[#E72175] text-xs shrink-0">✕</button>
+                </div>
+                <p class="text-xs text-slate-500 mt-1 leading-snug">${a.rationale || ''}</p>
+                <select onchange="setItemLever(${a.id}, this.value)" class="mt-2 w-full text-[11px] bg-white border border-slate-300 text-slate-600 rounded-lg px-1.5 py-1 outline-none">
+                  ${sixBDefs.map(x => `<option value="${x.key}" ${x.key===a.lever?'selected':''}>Move to ${x.key}</option>`).join('')}
+                </select>
+              </div>`).join('') || `<p class="text-xs text-slate-300 italic px-1">No items</p>`}
+          </div>
+        </div>`).join('')}
+    </div>`;
+}
+
+function addActionItem(){
+  const label = document.getElementById('newitem-label').value.trim();
+  const rationale = document.getElementById('newitem-rationale').value.trim();
+  const lever = document.getElementById('newitem-lever').value;
+  if(!label){ alert('Enter a role or person.'); return; }
+  const l = leader();
+  l.actionItems.push({id: l.nextActionId++, label, rationale, lever});
+  renderStepContent();
+  renderSummary();
+}
+function removeActionItem(id){
+  leader().actionItems = leader().actionItems.filter(a => a.id !== id);
+  renderStepContent();
+  renderSummary();
+}
+function setItemLever(id, lever){
+  const item = leader().actionItems.find(a => a.id === id);
+  if(item) item.lever = lever;
+  renderStepContent();
+  renderSummary();
+}
+
+// ============================================================
+// STEP 4 — HEADCOUNT OUTPUT
+// ============================================================
+function tplStep4(){
+  const l = leader();
+  const budgetBadge = (range, colorKey) => range ? `<span class="inline-block mt-1.5 px-1.5 py-0.5 rounded text-[11px] font-semibold ${tintBg(colorKey,20)} text-[#14244A]">💰 ${range}</span>` : '';
+
+  const baselineCards = l.headcount.baseline.map((it,i) => `
+    <div class="border-l-4 rounded-xl p-3 bg-white flex items-start justify-between gap-2" style="border-color:${BRAND[hcColor.baseline].hex}">
+      <div>
+        <p class="text-sm font-semibold text-[#14244A]">${it.role}</p>
+        <p class="text-xs text-slate-500 mt-0.5">${it.notes}</p>
+        <p class="text-[11px] text-slate-400 mt-1">${it.timeframe} · ${it.status}</p>
+        ${budgetBadge(it.budgetRange, hcColor.baseline)}
+      </div>
+      <button onclick="removeItem('baseline',${i})" class="text-slate-400 hover:text-[#E72175] text-xs">✕</button>
+    </div>`).join('') || `<p class="text-xs text-slate-400 italic">No baseline roles yet.</p>`;
+
+  const wishlistCards = l.headcount.wishlist.map((it,i) => `
+    <div class="border-l-4 rounded-xl p-3 bg-white flex items-start justify-between gap-2" style="border-color:${BRAND[hcColor.wishlist].hex}">
+      <div>
+        <p class="text-sm font-semibold text-[#14244A]">${it.role}</p>
+        <p class="text-xs text-slate-500 mt-0.5">Milestone: ${it.milestone} · ${it.timeframe}</p>
+        <p class="text-xs text-slate-500 italic mt-1">${it.justification}</p>
+        ${budgetBadge(it.budgetRange, hcColor.wishlist)}
+      </div>
+      <button onclick="removeItem('wishlist',${i})" class="text-slate-400 hover:text-[#E72175] text-xs">✕</button>
+    </div>`).join('') || `<p class="text-xs text-slate-400 italic">No wish list roles yet.</p>`;
+
+  const radarCards = l.headcount.radar.map((it,i) => `
+    <div class="border-l-4 rounded-xl p-3 bg-white flex items-start justify-between gap-2" style="border-color:${BRAND[hcColor.radar].hex}">
+      <div>
+        <p class="text-sm font-semibold text-[#14244A]">${it.role}</p>
+        <p class="text-xs text-slate-500 mt-0.5">${it.why}</p>
+        <p class="text-xs text-slate-500 italic mt-1">${it.notes}</p>
+        ${budgetBadge(it.budgetRange, hcColor.radar)}
+      </div>
+      <button onclick="removeItem('radar',${i})" class="text-slate-400 hover:text-[#E72175] text-xs">✕</button>
+    </div>`).join('') || `<p class="text-xs text-slate-400 italic">No networking radar roles yet.</p>`;
+
+  return `
+    <div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
+      <div class="${tintBg(hcColor.baseline,8)} border ${tintBorder(hcColor.baseline,35)} rounded-2xl p-5 flex flex-col">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-sm font-bold text-[#14244A] flex items-center">${dot(hcColor.baseline)}Baseline Headcount</h3>
+          <span class="text-xs text-slate-400">${l.headcount.baseline.length} roles</span>
+        </div>
+        <div class="space-y-2 flex-1">${baselineCards}</div>
+        <div class="border-t border-slate-200 mt-4 pt-3 space-y-1.5">
+          <input id="bl-role" placeholder="Role title" class="w-full text-xs bg-white border border-slate-300 text-[#14244A] placeholder-slate-400 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-[#E72175]">
+          <input id="bl-notes" placeholder="Notes" class="w-full text-xs bg-white border border-slate-300 text-[#14244A] placeholder-slate-400 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-[#E72175]">
+          <div class="flex gap-1.5">
+            <input id="bl-timeframe" placeholder="Timeframe" class="flex-1 text-xs bg-white border border-slate-300 text-[#14244A] placeholder-slate-400 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-[#E72175]">
+            <select id="bl-status" class="text-xs bg-white border border-slate-300 text-[#14244A] rounded-lg px-2 py-1.5 outline-none focus:ring-2 focus:ring-[#E72175]">
+              <option>Approved</option><option>Under Review</option>
+            </select>
+          </div>
+          <input id="bl-budget" placeholder="Budget range, e.g. $120k – $140k" class="w-full text-xs bg-white border border-slate-300 text-[#14244A] placeholder-slate-400 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-[#E72175]">
+          <button onclick="addBaseline()" class="w-full py-1.5 text-xs font-semibold rounded-lg text-white hover:opacity-90" style="background:${BRAND[hcColor.baseline].hex}">+ Add Baseline Role</button>
+        </div>
+      </div>
+
+      <div class="${tintBg(hcColor.wishlist,8)} border ${tintBorder(hcColor.wishlist,35)} rounded-2xl p-5 flex flex-col">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-sm font-bold text-[#14244A] flex items-center">${dot(hcColor.wishlist)}Dream Wish List</h3>
+          <span class="text-xs text-slate-400">${l.headcount.wishlist.length} roles</span>
+        </div>
+        <div class="space-y-2 flex-1">${wishlistCards}</div>
+        <div class="border-t border-slate-200 mt-4 pt-3 space-y-1.5">
+          <input id="wl-role" placeholder="Role title" class="w-full text-xs bg-white border border-slate-300 text-[#14244A] placeholder-slate-400 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-[#E72175]">
+          <input id="wl-milestone" placeholder="Linked milestone" class="w-full text-xs bg-white border border-slate-300 text-[#14244A] placeholder-slate-400 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-[#E72175]">
+          <input id="wl-timeframe" placeholder="Timeframe" class="w-full text-xs bg-white border border-slate-300 text-[#14244A] placeholder-slate-400 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-[#E72175]">
+          <input id="wl-justification" placeholder="Justification" class="w-full text-xs bg-white border border-slate-300 text-[#14244A] placeholder-slate-400 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-[#E72175]">
+          <input id="wl-budget" placeholder="Budget range, e.g. $120k – $140k" class="w-full text-xs bg-white border border-slate-300 text-[#14244A] placeholder-slate-400 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-[#E72175]">
+          <button onclick="addWishlist()" class="w-full py-1.5 text-xs font-semibold rounded-lg text-[#14244A] hover:opacity-90" style="background:${BRAND[hcColor.wishlist].hex}">+ Add to Wish List</button>
+        </div>
+      </div>
+
+      <div class="${tintBg(hcColor.radar,8)} border ${tintBorder(hcColor.radar,35)} rounded-2xl p-5 flex flex-col">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-sm font-bold text-[#14244A] flex items-center">${dot(hcColor.radar)}Always Be Networking Radar</h3>
+          <span class="text-xs text-slate-400">${l.headcount.radar.length} roles</span>
+        </div>
+        <div class="space-y-2 flex-1">${radarCards}</div>
+        <div class="border-t border-slate-200 mt-4 pt-3 space-y-1.5">
+          <input id="abn-role" placeholder="Role / specialty" class="w-full text-xs bg-white border border-slate-300 text-[#14244A] placeholder-slate-400 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-[#E72175]">
+          <input id="abn-why" placeholder="Why hard to fill" class="w-full text-xs bg-white border border-slate-300 text-[#14244A] placeholder-slate-400 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-[#E72175]">
+          <input id="abn-notes" placeholder="Notes for TA" class="w-full text-xs bg-white border border-slate-300 text-[#14244A] placeholder-slate-400 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-[#E72175]">
+          <input id="abn-budget" placeholder="Budget range, e.g. $120k – $140k" class="w-full text-xs bg-white border border-slate-300 text-[#14244A] placeholder-slate-400 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-[#E72175]">
+          <button onclick="addRadar()" class="w-full py-1.5 text-xs font-semibold rounded-lg text-[#14244A] hover:opacity-90" style="background:${BRAND[hcColor.radar].hex}">+ Add to Radar</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function addBaseline(){
+  const role = document.getElementById('bl-role').value.trim();
+  if(!role){ alert('Enter a role title.'); return; }
+  leader().headcount.baseline.push({
+    role,
+    notes: document.getElementById('bl-notes').value.trim() || '—',
+    timeframe: document.getElementById('bl-timeframe').value.trim() || '—',
+    status: document.getElementById('bl-status').value,
+    budgetRange: document.getElementById('bl-budget').value.trim() || '—'
+  });
+  renderStepContent(); renderSummary();
+}
+function addWishlist(){
+  const role = document.getElementById('wl-role').value.trim();
+  if(!role){ alert('Enter a role title.'); return; }
+  leader().headcount.wishlist.push({
+    role,
+    milestone: document.getElementById('wl-milestone').value.trim() || '—',
+    timeframe: document.getElementById('wl-timeframe').value.trim() || '—',
+    justification: document.getElementById('wl-justification').value.trim() || '—',
+    budgetRange: document.getElementById('wl-budget').value.trim() || '—'
+  });
+  renderStepContent(); renderSummary();
+}
+function addRadar(){
+  const role = document.getElementById('abn-role').value.trim();
+  if(!role){ alert('Enter a role / specialty.'); return; }
+  leader().headcount.radar.push({
+    role,
+    why: document.getElementById('abn-why').value.trim() || '—',
+    notes: document.getElementById('abn-notes').value.trim() || '—',
+    budgetRange: document.getElementById('abn-budget').value.trim() || '—'
+  });
+  renderStepContent(); renderSummary();
+}
+function removeItem(kind, i){ leader().headcount[kind].splice(i,1); renderStepContent(); renderSummary(); }
+
+// ============================================================
+// SUMMARY DRAWER
+// ============================================================
+function renderSummary(){
+  const l = leader();
+  document.getElementById('summary-leader-name').textContent = l.name;
+  document.getElementById('summary-counts').innerHTML = `
+    <div class="rounded-xl border ${tintBorder(hcColor.baseline,45)} ${tintBg(hcColor.baseline,15)} p-3 text-center">
+      <div class="text-xl font-bold text-[#14244A]">${l.headcount.baseline.length}</div>
+      <div class="text-xs text-[#14244A]/70 flex items-center justify-center">${dot(hcColor.baseline)}Baseline Roles</div>
+    </div>
+    <div class="rounded-xl border ${tintBorder(hcColor.wishlist,45)} ${tintBg(hcColor.wishlist,15)} p-3 text-center">
+      <div class="text-xl font-bold text-[#14244A]">${l.headcount.wishlist.length}</div>
+      <div class="text-xs text-[#14244A]/70 flex items-center justify-center">${dot(hcColor.wishlist)}Dream Wish List</div>
+    </div>
+    <div class="rounded-xl border ${tintBorder(hcColor.radar,45)} ${tintBg(hcColor.radar,15)} p-3 text-center">
+      <div class="text-xl font-bold text-[#14244A]">${l.headcount.radar.length}</div>
+      <div class="text-xs text-[#14244A]/70 flex items-center justify-center">${dot(hcColor.radar)}ABN Radar</div>
+    </div>
+    <div class="rounded-xl border ${tintBorder('midnight',45)} ${tintBg('midnight',15)} p-3 text-center">
+      <div class="text-xl font-bold text-[#14244A]">${l.actionItems.length}</div>
+      <div class="text-xs text-[#14244A]/70 flex items-center justify-center">${dot('midnight')}6 B's Actions</div>
+    </div>`;
+
+  const rows = [];
+  l.headcount.baseline.forEach(i => rows.push({type:'Baseline', item:i.role, detail:i.notes, ref:`${i.timeframe} · ${i.status}`, budget:i.budgetRange || '—', colorKey:hcColor.baseline}));
+  l.headcount.wishlist.forEach(i => rows.push({type:'Wish List', item:i.role, detail:i.justification, ref:`${i.milestone} · ${i.timeframe}`, budget:i.budgetRange || '—', colorKey:hcColor.wishlist}));
+  l.headcount.radar.forEach(i => rows.push({type:'ABN Radar', item:i.role, detail:i.why, ref:i.notes, budget:i.budgetRange || '—', colorKey:hcColor.radar}));
+  l.actionItems.forEach(i => rows.push({type:`6B: ${i.lever}`, item:i.label, detail:i.rationale || '—', ref:'Talent Strategy', budget:'—', colorKey:leverColor[i.lever]}));
+
+  document.getElementById('summary-body').innerHTML = rows.map(r => `
+    <tr class="border-t border-slate-100">
+      <td class="py-2 px-3"><span class="px-2 py-0.5 rounded-full text-[11px] font-semibold ${tintBg(r.colorKey,18)} text-[#14244A]">${r.type}</span></td>
+      <td class="py-2 px-3 font-medium text-[#14244A]">${r.item}</td>
+      <td class="py-2 px-3 text-slate-500">${r.detail}</td>
+      <td class="py-2 px-3 text-slate-400">${r.ref}</td>
+      <td class="py-2 px-3 font-semibold text-[#14244A]">${r.budget}</td>
+    </tr>`).join('') || `<tr><td colspan="5" class="py-3 px-3 text-slate-400 italic">No action items yet.</td></tr>`;
+}
+
+function toggleDrawer(){
+  const body = document.getElementById('drawer-body');
+  const btn = document.getElementById('drawer-toggle-btn');
+  body.classList.toggle('hidden');
+  btn.textContent = body.classList.contains('hidden') ? 'Show ▼' : 'Hide ▲';
+}
+
+// ============================================================
+// GLOBAL RENDER
+// ============================================================
+function renderAll(){
+  renderLeaderNav();
+  renderHeader();
+  renderStepTabs();
+  renderStepContent();
+  renderSummary();
+}
+renderAll();
+</script>
+</body>
+</html>
